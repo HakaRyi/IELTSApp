@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import '../services/lexical_service.dart';
+import '../services/practice_service.dart';
+import '../services/review_service.dart';
+import '../services/speaking_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/floating_background.dart';
+import 'history_screen.dart';
 import 'lookup_screen.dart';
+import 'practice_screen.dart';
+import 'review_screen.dart';
+import 'speaking_screen.dart';
 import 'vault_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -13,15 +20,28 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final _service = LexicalService();
+  final _lexicalService  = LexicalService();
+  final _practiceService = PracticeService();
+  final _speakingService = SpeakingService();
+  final _reviewService   = ReviewService();
   final _vaultKey = GlobalKey<VaultScreenState>();
   int _index = 0;
 
   @override
   Widget build(BuildContext context) {
     final pages = [
-      LookupScreen(service: _service),
-      VaultScreen(key: _vaultKey, service: _service),
+      LookupScreen(service: _lexicalService),
+      VaultScreen(key: _vaultKey, service: _lexicalService),
+      PracticeScreen(
+          lexicalService: _lexicalService,
+          practiceService: _practiceService),
+      SpeakingScreen(
+          lexicalService: _lexicalService,
+          speakingService: _speakingService),
+      HistoryScreen(
+          practiceService: _practiceService,
+          speakingService: _speakingService),
+      ReviewScreen(reviewService: _reviewService),
     ];
 
     return Scaffold(
@@ -32,7 +52,7 @@ class _HomeScreenState extends State<HomeScreen> {
           SafeArea(
             bottom: false,
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 350),
+              duration: const Duration(milliseconds: 320),
               transitionBuilder: (child, anim) => FadeTransition(
                 opacity: anim,
                 child: SlideTransition(
@@ -67,97 +87,87 @@ class _FloatingNavBar extends StatelessWidget {
   final ValueChanged<int> onChanged;
   const _FloatingNavBar({required this.index, required this.onChanged});
 
+  static const _items = [
+    _NavDef(Icons.search_rounded, 'Tra từ'),
+    _NavDef(Icons.menu_book_rounded, 'Kho từ'),
+    _NavDef(Icons.auto_stories_rounded, 'Đọc'),
+    _NavDef(Icons.record_voice_over_rounded, 'Nói'),
+    _NavDef(Icons.history_rounded, 'Lịch sử'),
+    _NavDef(Icons.psychology_rounded, 'Ôn tập'),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(40, 0, 40, 24),
-      padding: const EdgeInsets.all(6),
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 18),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.20),
-            blurRadius: 30,
-            offset: const Offset(0, 12),
+            color: AppColors.primary.withValues(alpha: 0.18),
+            blurRadius: 28,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       child: Row(
-        children: [
-          _NavItem(
-            icon: Icons.search_rounded,
-            label: 'Tra từ',
-            selected: index == 0,
-            onTap: () => onChanged(0),
-          ),
-          _NavItem(
-            icon: Icons.menu_book_rounded,
-            label: 'Kho từ',
-            selected: index == 1,
-            onTap: () => onChanged(1),
-          ),
-        ],
+        children: _items.asMap().entries.map((e) {
+          final i = e.key;
+          final def = e.value;
+          final sel = index == i;
+          return Expanded(
+            flex: sel ? 3 : 2,
+            child: GestureDetector(
+              onTap: () => onChanged(i),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOut,
+                padding: EdgeInsets.symmetric(
+                    vertical: 10, horizontal: sel ? 6 : 0),
+                decoration: BoxDecoration(
+                  gradient: sel
+                      ? const LinearGradient(
+                          colors: [AppColors.primary, AppColors.accent])
+                      : null,
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(def.icon,
+                        color: sel
+                            ? Colors.white
+                            : AppColors.textSecondary,
+                        size: 20),
+                    if (sel) ...[
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          def.label,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
 }
 
-class _NavItem extends StatelessWidget {
+class _NavDef {
   final IconData icon;
   final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            gradient: selected
-                ? const LinearGradient(
-                    colors: [AppColors.primary, AppColors.accent])
-                : null,
-            borderRadius: BorderRadius.circular(26),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon,
-                  color: selected ? Colors.white : AppColors.textSecondary,
-                  size: 22),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 280),
-                child: selected
-                    ? Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: Text(
-                          label,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      )
-                    : const SizedBox.shrink(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  const _NavDef(this.icon, this.label);
 }

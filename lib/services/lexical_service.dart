@@ -4,6 +4,7 @@ import '../core/app_config.dart';
 
 import '../models/lexical_item.dart';
 import '../models/lookup_result.dart';
+import '../models/suggest_item.dart';
 
 class LexicalService {
   String get _baseUrl => AppConfig.lexicalUrl;
@@ -28,6 +29,18 @@ class LexicalService {
     final res = await _client.get(uri);
     _ensureOk(res);
     return PagedResult.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+  }
+
+  Future<List<SuggestItem>> suggest(String prefix, {int limit = 8}) async {
+    if (prefix.trim().isEmpty) return [];
+    final uri = Uri.parse('$_baseUrl/suggest').replace(
+        queryParameters: {'q': prefix.trim(), 'limit': '$limit'});
+    final res = await _client.get(uri);
+    _ensureOk(res);
+    final list = jsonDecode(res.body) as List;
+    return list
+        .map((e) => SuggestItem.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<List<String>> getTopics() async {
