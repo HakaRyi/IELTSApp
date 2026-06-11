@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/app_config.dart';
+import '../core/app_http.dart';
 import '../models/speaking_practice.dart';
 
 class SpeakingService {
   final http.Client _client;
-  SpeakingService({http.Client? client}) : _client = client ?? http.Client();
+  SpeakingService({http.Client? client}) : _client = client ?? AppHttp.client;
 
   Future<SpeakingPractice> generateSpeaking({
     required String topic,

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/app_config.dart';
+import '../core/app_http.dart';
 import '../models/review_card.dart';
 
 class ReviewStats {
@@ -18,7 +19,7 @@ class ReviewStats {
 
 class ReviewService {
   final http.Client _client;
-  ReviewService({http.Client? client}) : _client = client ?? http.Client();
+  ReviewService({http.Client? client}) : _client = client ?? AppHttp.client;
 
   Future<ReviewCard> enroll({
     required String lexicalItemId,

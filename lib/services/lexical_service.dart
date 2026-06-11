@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/app_config.dart';
+import '../core/app_http.dart';
 
 import '../models/lexical_item.dart';
 import '../models/lookup_result.dart';
@@ -10,7 +11,7 @@ class LexicalService {
   String get _baseUrl => AppConfig.lexicalUrl;
 
   final http.Client _client;
-  LexicalService({http.Client? client}) : _client = client ?? http.Client();
+  LexicalService({http.Client? client}) : _client = client ?? AppHttp.client;
 
   Future<LookupResult> lookup(String word) async {
     final uri = Uri.parse('$_baseUrl/lookup?word=${Uri.encodeComponent(word)}');

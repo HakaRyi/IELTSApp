@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../core/app_config.dart';
+import '../core/app_http.dart';
 import '../models/generated_passage.dart';
 
 class PracticeService {
   final http.Client _client;
-  PracticeService({http.Client? client}) : _client = client ?? http.Client();
+  PracticeService({http.Client? client}) : _client = client ?? AppHttp.client;
 
   Future<GeneratedPassage> generatePassage({
     required String topic,
