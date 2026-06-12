@@ -6,6 +6,7 @@ import '../services/lexical_service.dart';
 import '../services/word_dictionary.dart';
 import '../theme/app_theme.dart';
 import '../widgets/fade_slide_in.dart';
+import '../widgets/intensity_meter.dart';
 import '../widgets/topic_chip.dart';
 import 'detail_screen.dart';
 
@@ -151,7 +152,7 @@ class _LookupScreenState extends State<LookupScreen> {
           const SizedBox(height: 4),
           FadeSlideIn(
             delay: const Duration(milliseconds: 80),
-            child: Text('Tìm nghĩa, ví dụ và lưu vào kho theo chủ đề',
+            child: Text('Tra từ hoặc cụm từ — nghĩa, sắc thái, ví dụ',
                 style:
                     TextStyle(fontSize: 14, color: AppColors.textSecondary)),
           ),
@@ -245,7 +246,7 @@ class _SearchBarWithSuggestions extends StatelessWidget {
                   textInputAction: TextInputAction.search,
                   onSubmitted: (_) => onSubmit(),
                   decoration: const InputDecoration(
-                    hintText: 'Nhập một từ tiếng Anh...',
+                    hintText: 'Nhập từ hoặc cụm từ (vd: obsessed with)...',
                     border: InputBorder.none,
                     contentPadding:
                         EdgeInsets.symmetric(horizontal: 12, vertical: 18),
@@ -449,6 +450,8 @@ class _ResultCard extends StatelessWidget {
                             fontSize: 15,
                             height: 1.5,
                             color: AppColors.textPrimary)),
+                    IntensityMeter(
+                        intensity: m.intensity, note: m.intensityNote),
                     ...m.examples.map((ex) => Padding(
                           padding: const EdgeInsets.only(top: 6, left: 4),
                           child: Text('• $ex',

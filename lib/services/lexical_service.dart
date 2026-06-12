@@ -6,6 +6,7 @@ import '../core/app_http.dart';
 import '../models/lexical_item.dart';
 import '../models/lookup_result.dart';
 import '../models/suggest_item.dart';
+import '../models/topic_stat.dart';
 
 class LexicalService {
   String get _baseUrl => AppConfig.lexicalUrl;
@@ -48,6 +49,14 @@ class LexicalService {
     final res = await _client.get(Uri.parse('$_baseUrl/topics'));
     _ensureOk(res);
     return (jsonDecode(res.body) as List).map((e) => e.toString()).toList();
+  }
+
+  Future<List<TopicStat>> getTopicStats() async {
+    final res = await _client.get(Uri.parse('$_baseUrl/topics/stats'));
+    _ensureOk(res);
+    return (jsonDecode(res.body) as List)
+        .map((e) => TopicStat.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<LexicalItem> create(LexicalItem item) async {

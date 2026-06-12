@@ -6,6 +6,8 @@ import '../services/speaking_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/fade_slide_in.dart';
 import '../widgets/floating_background.dart';
+import '../widgets/highlighted_text.dart';
+import '../widgets/word_lookup_sheet.dart';
 
 class HistoryScreen extends StatefulWidget {
   final PracticeService practiceService;
@@ -306,16 +308,27 @@ class _PassageTileState extends State<_PassageTile> {
                         const SizedBox(height: 10),
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 250),
-                          child: Text(
-                            key: ValueKey(_showVI),
-                            _showVI
-                                ? p.vietnameseTranslation
-                                : p.englishContent,
-                            style: const TextStyle(
-                                fontSize: 14,
-                                height: 1.7,
-                                color: AppColors.textPrimary),
-                          ),
+                          child: _showVI
+                              ? Text(
+                                  key: const ValueKey(true),
+                                  p.vietnameseTranslation,
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      height: 1.7,
+                                      color: AppColors.textPrimary),
+                                )
+                              : HighlightedText(
+                                  key: const ValueKey(false),
+                                  text: p.englishContent,
+                                  highlights: p.usedVocabulary,
+                                  tapAllWords: true,
+                                  onTapWord: (w) =>
+                                      showWordLookupSheet(context, w),
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      height: 1.7,
+                                      color: AppColors.textPrimary),
+                                ),
                         ),
                       ],
                     ),

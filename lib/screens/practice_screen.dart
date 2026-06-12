@@ -6,6 +6,8 @@ import '../services/practice_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/fade_slide_in.dart';
 import '../widgets/floating_background.dart';
+import '../widgets/highlighted_text.dart';
+import '../widgets/word_lookup_sheet.dart';
 
 class PracticeScreen extends StatefulWidget {
   final LexicalService lexicalService;
@@ -650,17 +652,22 @@ class _PassageCardState extends State<_PassageCard> {
             child: Padding(
               key: ValueKey(_showVietnamese),
               padding: const EdgeInsets.all(20),
-              child: Text(
-                _showVietnamese
-                    ? widget.passage.vietnameseTranslation
-                    : widget.passage.englishContent,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.75,
-                  color: AppColors.textPrimary,
-                  fontStyle: _showVietnamese ? FontStyle.normal : FontStyle.normal,
-                ),
-              ),
+              child: _showVietnamese
+                  ? Text(
+                      widget.passage.vietnameseTranslation,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        height: 1.75,
+                        color: AppColors.textPrimary,
+                      ),
+                    )
+                  // Tiếng Anh: tô màu từ đã học + tap bất kỳ từ nào để tra nhanh
+                  : HighlightedText(
+                      text: widget.passage.englishContent,
+                      highlights: widget.passage.usedVocabulary,
+                      tapAllWords: true,
+                      onTapWord: (w) => showWordLookupSheet(context, w),
+                    ),
             ),
           ),
         ],

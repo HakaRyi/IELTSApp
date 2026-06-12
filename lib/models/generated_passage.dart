@@ -5,6 +5,7 @@ class GeneratedPassage {
   final String englishContent;
   final String vietnameseTranslation;
   final List<String> usedLexicalItemIds;
+  final List<String> usedVocabulary;
   final DateTime createdAt;
 
   GeneratedPassage({
@@ -14,6 +15,7 @@ class GeneratedPassage {
     required this.englishContent,
     required this.vietnameseTranslation,
     required this.usedLexicalItemIds,
+    required this.usedVocabulary,
     required this.createdAt,
   });
 
@@ -26,6 +28,8 @@ class GeneratedPassage {
       vietnameseTranslation: json['vietnameseTranslation'] ?? '',
       usedLexicalItemIds:
           (json['usedLexicalItemIds'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      usedVocabulary:
+          (json['usedVocabulary'] as List?)?.map((e) => e.toString()).toList() ?? [],
       createdAt: json['createdAt'] != null
           ? DateTime.tryParse(json['createdAt']) ?? DateTime.now()
           : DateTime.now(),

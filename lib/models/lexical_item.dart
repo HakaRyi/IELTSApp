@@ -10,6 +10,9 @@ class LexicalItem {
   final List<String> antonyms;
   final String personalNotes;
 
+  /// Ngày tra/lưu từ — null với dữ liệu cũ (không có trường này).
+  final DateTime? createdAt;
+
   LexicalItem({
     this.id,
     required this.value,
@@ -19,6 +22,7 @@ class LexicalItem {
     this.synonyms = const [],
     this.antonyms = const [],
     this.personalNotes = '',
+    this.createdAt,
   });
 
   factory LexicalItem.fromJson(Map<String, dynamic> json) {
@@ -37,7 +41,16 @@ class LexicalItem {
       antonyms:
           (json['antonyms'] as List?)?.map((e) => e.toString()).toList() ?? const [],
       personalNotes: json['personalNotes'] ?? '',
+      createdAt: _parseCreatedAt(json['createdAt']),
     );
+  }
+
+  static DateTime? _parseCreatedAt(dynamic raw) {
+    if (raw == null) return null;
+    final d = DateTime.tryParse(raw.toString());
+    // Data cũ không có CreatedAt → backend trả 0001-01-01 → coi như null
+    if (d == null || d.year < 2000) return null;
+    return d.toLocal();
   }
 
   Map<String, dynamic> toJson() => {
@@ -69,6 +82,7 @@ class LexicalItem {
       synonyms: synonyms ?? this.synonyms,
       antonyms: antonyms ?? this.antonyms,
       personalNotes: personalNotes ?? this.personalNotes,
+      createdAt: createdAt,
     );
   }
 }

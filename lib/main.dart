@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'core/auth_controller.dart';
+import 'core/server_config_store.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'theme/app_theme.dart';
 import 'widgets/floating_background.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await ServerConfigStore.load(); // nạp URL server đã lưu (nếu có)
   runApp(const IeltsVocabApp());
 }
 

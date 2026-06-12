@@ -3,6 +3,7 @@ import '../models/lexical_item.dart';
 import '../services/lexical_service.dart';
 import '../services/review_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/intensity_meter.dart';
 import '../widgets/topic_chip.dart';
 
 class DetailScreen extends StatefulWidget {
@@ -321,6 +322,8 @@ class _DetailScreenState extends State<DetailScreen> {
                     Text(m.definition,
                         style:
                             const TextStyle(fontSize: 15, height: 1.5)),
+                    IntensityMeter(
+                        intensity: m.intensity, note: m.intensityNote),
                     ...m.examples.map((ex) => Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Text('• $ex',

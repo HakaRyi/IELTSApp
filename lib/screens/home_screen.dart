@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../core/auth_controller.dart';
+import '../services/essay_service.dart';
 import '../services/lexical_service.dart';
 import '../services/practice_service.dart';
 import '../services/review_service.dart';
 import '../services/speaking_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/floating_background.dart';
+import 'essay_screen.dart';
 import 'history_screen.dart';
 import 'lookup_screen.dart';
 import 'practice_screen.dart';
@@ -26,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _practiceService = PracticeService();
   final _speakingService = SpeakingService();
   final _reviewService   = ReviewService();
+  final _essayService    = EssayService();
   final _vaultKey = GlobalKey<VaultScreenState>();
   int _index = 0;
 
@@ -40,6 +43,7 @@ class _HomeScreenState extends State<HomeScreen> {
       SpeakingScreen(
           lexicalService: _lexicalService,
           speakingService: _speakingService),
+      EssayScreen(essayService: _essayService),
       HistoryScreen(
           practiceService: _practiceService,
           speakingService: _speakingService),
@@ -104,6 +108,7 @@ class _FloatingNavBar extends StatelessWidget {
     _NavDef(Icons.menu_book_rounded, 'Kho từ'),
     _NavDef(Icons.auto_stories_rounded, 'Đọc'),
     _NavDef(Icons.record_voice_over_rounded, 'Nói'),
+    _NavDef(Icons.edit_note_rounded, 'Viết'),
     _NavDef(Icons.history_rounded, 'Lịch sử'),
     _NavDef(Icons.psychology_rounded, 'Ôn tập'),
   ];
