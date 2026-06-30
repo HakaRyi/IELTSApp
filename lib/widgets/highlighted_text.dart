@@ -2,15 +2,18 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
-/// Hiển thị [text]:
-///  - Tô màu các từ trong [highlights] (không phân biệt hoa thường, khớp cả cụm).
-///  - Nếu [tapAllWords] = true: MỌI từ đều tap được → gọi [onTapWord] (tra từ nhanh).
+/// Hiển thị [text] với 2 lớp tô màu chồng nhau:
+///  - [highlights] (cụm/từ vocab) → tô màu xanh primary, in đậm.
+///  - [userHighlights] (set lowercase) → tô NỀN VÀNG (do user tự highlight).
+///
+/// Nếu [tapAllWords] = true: mọi từ đều tap được → gọi [onTapWord].
 class HighlightedText extends StatefulWidget {
   final String text;
   final List<String> highlights;
   final TextStyle? style;
   final void Function(String word)? onTapWord;
   final bool tapAllWords;
+  final Set<String>? userHighlights;
 
   const HighlightedText({
     super.key,
@@ -19,6 +22,7 @@ class HighlightedText extends StatefulWidget {
     this.style,
     this.onTapWord,
     this.tapAllWords = false,
+    this.userHighlights,
   });
 
   @override
@@ -27,6 +31,8 @@ class HighlightedText extends StatefulWidget {
 
 class _HighlightedTextState extends State<HighlightedText> {
   final List<TapGestureRecognizer> _recognizers = [];
+
+  static const _userHighlightBg = Color(0xFFFFE680); // vàng nổi bật, dịu mắt
 
   @override
   void dispose() {
@@ -48,23 +54,57 @@ class _HighlightedTextState extends State<HighlightedText> {
     return r;
   }
 
+  bool _isUserHighlighted(String word) =>
+      widget.userHighlights?.contains(word.toLowerCase()) ?? false;
+
   /// Đoạn văn thường: nếu tapAllWords thì tách từng từ, mỗi từ tap được.
+  /// Áp dụng nền vàng cho từ trong userHighlights.
   void _addPlainSegment(List<InlineSpan> spans, String segment, TextStyle base) {
     if (!widget.tapAllWords || widget.onTapWord == null) {
-      spans.add(TextSpan(text: segment, style: base));
+      // Vẫn cần tách để check user highlights ngay cả khi không cho tap.
+      _addSegmentWithUserHighlights(spans, segment, base);
       return;
     }
     final wordRegex = RegExp(r"[A-Za-z][A-Za-z'\-]*");
     var last = 0;
     for (final m in wordRegex.allMatches(segment)) {
       if (m.start > last) {
-        spans.add(TextSpan(text: segment.substring(last, m.start), style: base));
+        _addSegmentWithUserHighlights(
+            spans, segment.substring(last, m.start), base);
       }
       final word = m.group(0)!;
+      final hl = _isUserHighlighted(word);
       spans.add(TextSpan(
         text: word,
-        style: base,
+        style: hl ? base.copyWith(backgroundColor: _userHighlightBg) : base,
         recognizer: _makeRecognizer(word),
+      ));
+      last = m.end;
+    }
+    if (last < segment.length) {
+      _addSegmentWithUserHighlights(spans, segment.substring(last), base);
+    }
+  }
+
+  /// Trường hợp không tap: vẫn quét word-by-word để tô vàng từ đã highlight.
+  void _addSegmentWithUserHighlights(
+      List<InlineSpan> spans, String segment, TextStyle base) {
+    final hls = widget.userHighlights;
+    if (hls == null || hls.isEmpty) {
+      spans.add(TextSpan(text: segment, style: base));
+      return;
+    }
+    final wordRegex = RegExp(r"[A-Za-z][A-Za-z'\-]*");
+    var last = 0;
+    for (final m in wordRegex.allMatches(segment)) {
+      final word = m.group(0)!;
+      if (!hls.contains(word.toLowerCase())) continue;
+      if (m.start > last) {
+        spans.add(TextSpan(text: segment.substring(last, m.start), style: base));
+      }
+      spans.add(TextSpan(
+        text: word,
+        style: base.copyWith(backgroundColor: _userHighlightBg),
       ));
       last = m.end;
     }
@@ -103,13 +143,17 @@ class _HighlightedTextState extends State<HighlightedText> {
         _addPlainSegment(spans, widget.text.substring(last, m.start), base);
       }
       final word = m.group(0)!;
+      final hl = _isUserHighlighted(word);
       spans.add(TextSpan(
         text: word,
         recognizer: _makeRecognizer(word),
         style: base.copyWith(
           color: AppColors.primaryDark,
           fontWeight: FontWeight.w700,
-          backgroundColor: AppColors.primary.withValues(alpha: 0.12),
+          // Ưu tiên màu vàng user highlight nếu có, không thì màu primary nhạt
+          backgroundColor: hl
+              ? _userHighlightBg
+              : AppColors.primary.withValues(alpha: 0.12),
         ),
       ));
       last = m.end;

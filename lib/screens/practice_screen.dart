@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../widgets/fade_slide_in.dart';
 import '../widgets/floating_background.dart';
 import '../widgets/highlighted_text.dart';
+import '../widgets/passage_questions.dart';
 import '../widgets/word_lookup_sheet.dart';
 
 class PracticeScreen extends StatefulWidget {
@@ -31,6 +32,32 @@ class _PracticeScreenState extends State<PracticeScreen>
   String? _error;
   GeneratedPassage? _result;
 
+  /// Dạng bài IELTS Reading được chọn.
+  String _questionType = PassageQuestionType.multipleChoice;
+
+  /// Chủ đề đã có trong kho — gợi ý chọn nhanh, tránh gõ lại.
+  List<String> _existingTopics = [];
+
+  // ─── Highlight state (dùng chung cho cả bài đọc + câu hỏi) ─────────────────
+  bool _highlightMode = false;
+  final Set<String> _userHighlights = {};
+
+  void _toggleHighlightMode() =>
+      setState(() => _highlightMode = !_highlightMode);
+  void _clearHighlights() => setState(() => _userHighlights.clear());
+
+  /// Tap từ — mode bật = bôi vàng; tắt = tra từ.
+  void _onWordTap(String word) {
+    if (_highlightMode) {
+      setState(() {
+        final key = word.toLowerCase();
+        if (!_userHighlights.add(key)) _userHighlights.remove(key);
+      });
+    } else {
+      showWordLookupSheet(context, word);
+    }
+  }
+
   // vocab-pick mode
   List<LexicalItem> _vaultItems = [];
   bool _vaultLoading = false;
@@ -42,6 +69,14 @@ class _PracticeScreenState extends State<PracticeScreen>
     _tabCtrl = TabController(length: 2, vsync: this);
     _tabCtrl.addListener(() => setState(() {}));
     _loadVault();
+    _loadTopics();
+  }
+
+  Future<void> _loadTopics() async {
+    try {
+      final topics = await widget.lexicalService.getTopics();
+      if (mounted) setState(() => _existingTopics = topics);
+    } catch (_) {}
   }
 
   @override
@@ -75,6 +110,8 @@ class _PracticeScreenState extends State<PracticeScreen>
       _generating = true;
       _error = null;
       _result = null;
+      _userHighlights.clear();    // reset highlight cho bài mới
+      _highlightMode = false;
     });
 
     try {
@@ -83,6 +120,7 @@ class _PracticeScreenState extends State<PracticeScreen>
         topic: topic,
         targetBand: _band,
         lexicalItemIds: ids,
+        questionType: _questionType,
       );
       setState(() => _result = passage);
     } catch (e) {
@@ -170,6 +208,22 @@ class _PracticeScreenState extends State<PracticeScreen>
                       delay: const Duration(milliseconds: 140),
                       child: _buildTopicField(),
                     ),
+
+                    // Gợi ý chủ đề từ kho (tap để điền nhanh, tránh gõ trùng)
+                    if (_existingTopics.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      FadeSlideIn(
+                        delay: const Duration(milliseconds: 150),
+                        child: _buildTopicSuggestions(),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+
+                    // Dạng câu hỏi IELTS
+                    FadeSlideIn(
+                      delay: const Duration(milliseconds: 155),
+                      child: _buildQuestionTypeSelector(),
+                    ),
                     const SizedBox(height: 16),
 
                     // Band slider
@@ -240,16 +294,37 @@ class _PracticeScreenState extends State<PracticeScreen>
               ),
             ),
 
-            // Result
-            if (_result != null)
+            // Result — bài đọc + bộ câu hỏi (cùng state highlight)
+            if (_result != null) ...[
               SliverToBoxAdapter(
                 child: FadeSlideIn(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-                    child: _PassageCard(passage: _result!),
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+                    child: _PassageCard(
+                      passage: _result!,
+                      userHighlights: _userHighlights,
+                      highlightMode: _highlightMode,
+                      onToggleHighlight: _toggleHighlightMode,
+                      onClearHighlights: _clearHighlights,
+                      onWordTap: _onWordTap,
+                    ),
                   ),
                 ),
               ),
+              SliverToBoxAdapter(
+                child: FadeSlideIn(
+                  delay: const Duration(milliseconds: 120),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
+                    child: PassageQuestions(
+                      passage: _result!,
+                      userHighlights: _userHighlights,
+                      onWordTap: _onWordTap,
+                    ),
+                  ),
+                ),
+              ),
+            ],
 
             if (_result == null && !_generating)
               const SliverToBoxAdapter(child: SizedBox(height: 40)),
@@ -290,6 +365,86 @@ class _PracticeScreenState extends State<PracticeScreen>
               const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
         textInputAction: TextInputAction.done,
+      ),
+    );
+  }
+
+  /// Hàng chip chủ đề ĐÃ CÓ trong kho — tap để điền nhanh vào ô topic.
+  Widget _buildTopicSuggestions() {
+    final current = _topicCtrl.text.trim().toLowerCase();
+    return SizedBox(
+      height: 32,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: _existingTopics.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        itemBuilder: (_, i) {
+          final t = _existingTopics[i];
+          final sel = t.toLowerCase() == current;
+          return GestureDetector(
+            onTap: () => setState(() => _topicCtrl.text = t),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: sel
+                    ? AppColors.primary
+                    : AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(t,
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: sel ? Colors.white : AppColors.primary)),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Dropdown chọn dạng câu hỏi IELTS Reading.
+  Widget _buildQuestionTypeSelector() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 6, 8, 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.07),
+              blurRadius: 16,
+              offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.quiz_rounded,
+              color: AppColors.primary, size: 20),
+          const SizedBox(width: 10),
+          const Text('Dạng câu hỏi',
+              style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary)),
+          const Spacer(),
+          DropdownButton<String>(
+            value: _questionType,
+            underline: const SizedBox.shrink(),
+            borderRadius: BorderRadius.circular(12),
+            style: const TextStyle(
+                fontSize: 13.5,
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600),
+            items: PassageQuestionType.all
+                .map((t) => DropdownMenuItem(
+                      value: t,
+                      child: Text(PassageQuestionType.label(t)),
+                    ))
+                .toList(),
+            onChanged: (v) => setState(() => _questionType = v ?? _questionType),
+          ),
+        ],
       ),
     );
   }
@@ -533,7 +688,20 @@ class _PracticeScreenState extends State<PracticeScreen>
 
 class _PassageCard extends StatefulWidget {
   final GeneratedPassage passage;
-  const _PassageCard({required this.passage});
+  final Set<String> userHighlights;
+  final bool highlightMode;
+  final VoidCallback onToggleHighlight;
+  final VoidCallback onClearHighlights;
+  final void Function(String word) onWordTap;
+
+  const _PassageCard({
+    required this.passage,
+    required this.userHighlights,
+    required this.highlightMode,
+    required this.onToggleHighlight,
+    required this.onClearHighlights,
+    required this.onWordTap,
+  });
 
   @override
   State<_PassageCard> createState() => _PassageCardState();
@@ -541,6 +709,9 @@ class _PassageCard extends StatefulWidget {
 
 class _PassageCardState extends State<_PassageCard> {
   bool _showVietnamese = false;
+
+  bool get _highlightMode => widget.highlightMode;
+  Set<String> get _userHighlights => widget.userHighlights;
 
   @override
   Widget build(BuildContext context) {
@@ -633,9 +804,76 @@ class _PassageCardState extends State<_PassageCard> {
                     ],
                   ),
                 ),
+                // Nút bật/tắt chế độ Highlight — chỉ có nghĩa khi đang xem EN
+                if (!_showVietnamese) ...[
+                  const SizedBox(width: 6),
+                  Tooltip(
+                    message: _highlightMode
+                        ? 'Tắt chế độ tô vàng'
+                        : 'Bật chế độ tô vàng (áp dụng cả câu hỏi)',
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: widget.onToggleHighlight,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: _highlightMode
+                              ? const Color(0xFFFFE680)
+                              : Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Icon(Icons.brush_rounded,
+                            size: 18,
+                            color: _highlightMode
+                                ? AppColors.textPrimary
+                                : Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
+
+          // Thanh trạng thái khi đang bật chế độ highlight
+          if (_highlightMode && !_showVietnamese)
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: const Color(0xFFFFF8DC),
+              child: Row(
+                children: [
+                  const Icon(Icons.lightbulb_outline_rounded,
+                      size: 16, color: Color(0xFFB45309)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _userHighlights.isEmpty
+                          ? 'Tap vào từ để bôi vàng. Tap lại để bỏ.'
+                          : 'Đã bôi ${_userHighlights.length} từ. Tap lại để bỏ.',
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFFB45309)),
+                    ),
+                  ),
+                  if (_userHighlights.isNotEmpty)
+                    GestureDetector(
+                      onTap: widget.onClearHighlights,
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        child: Text('Xóa hết',
+                            style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFB45309),
+                                decoration: TextDecoration.underline)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
 
           // Content
           AnimatedSwitcher(
@@ -661,12 +899,14 @@ class _PassageCardState extends State<_PassageCard> {
                         color: AppColors.textPrimary,
                       ),
                     )
-                  // Tiếng Anh: tô màu từ đã học + tap bất kỳ từ nào để tra nhanh
+                  // Tiếng Anh: tô từ đã học (xanh) + user highlights (vàng)
+                  // + tap để tra từ HOẶC bôi vàng tuỳ chế độ.
                   : HighlightedText(
                       text: widget.passage.englishContent,
                       highlights: widget.passage.usedVocabulary,
                       tapAllWords: true,
-                      onTapWord: (w) => showWordLookupSheet(context, w),
+                      onTapWord: widget.onWordTap,
+                      userHighlights: _userHighlights,
                     ),
             ),
           ),

@@ -12,6 +12,7 @@ class PracticeService {
     required String topic,
     required double targetBand,
     required List<String> lexicalItemIds,
+    String questionType = PassageQuestionType.multipleChoice,
   }) async {
     final res = await _client.post(
       Uri.parse(AppConfig.passagesUrl),
@@ -20,6 +21,7 @@ class PracticeService {
         'topic': topic,
         'targetBand': targetBand,
         'lexicalItemIds': lexicalItemIds,
+        'questionType': questionType,
       }),
     );
     _ensureOk(res);

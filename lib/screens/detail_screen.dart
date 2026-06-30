@@ -29,17 +29,28 @@ class _DetailScreenState extends State<DetailScreen> {
   late TextEditingController _notesController;
   final _newTopicController = TextEditingController();
 
+  /// Tất cả chủ đề ĐÃ tồn tại của user — để gợi ý chọn lại, tránh trùng.
+  List<String> _existingTopics = [];
+
   bool _saving = false;
   bool _enrolling = false;
   bool _enrolled = false;
-  String? _savedItemId; // id sau khi lưu (dùng cho enroll)
+  String? _savedItemId;
 
   @override
   void initState() {
     super.initState();
     _topics = List<String>.from(widget.item.topics);
     _notesController = TextEditingController(text: widget.item.personalNotes);
-    _savedItemId = widget.item.id; // null nếu isNew
+    _savedItemId = widget.item.id;
+    _loadExistingTopics();
+  }
+
+  Future<void> _loadExistingTopics() async {
+    try {
+      final topics = await widget.service.getTopics();
+      if (mounted) setState(() => _existingTopics = topics);
+    } catch (_) {}
   }
 
   @override
@@ -49,12 +60,34 @@ class _DetailScreenState extends State<DetailScreen> {
     super.dispose();
   }
 
+  /// Toggle (đã chọn → bỏ; chưa → thêm). Kiểm tra trùng case-insensitive
+  /// và ưu tiên dùng đúng dạng của chủ đề ĐÃ có nếu trùng.
+  void _toggleTopic(String topic) {
+    final clean = topic.trim();
+    if (clean.isEmpty) return;
+    setState(() {
+      final existing = _topics.firstWhere(
+        (t) => t.toLowerCase() == clean.toLowerCase(),
+        orElse: () => '',
+      );
+      if (existing.isNotEmpty) {
+        _topics.remove(existing); // bỏ chọn
+      } else {
+        // Nếu trùng với chủ đề có sẵn → dùng đúng dạng cũ (vd user gõ "health" → dùng "Health" đã có)
+        final canonical = _existingTopics.firstWhere(
+          (t) => t.toLowerCase() == clean.toLowerCase(),
+          orElse: () => clean,
+        );
+        _topics.add(canonical);
+      }
+    });
+  }
+
   void _addTopic() {
     final t = _newTopicController.text.trim();
-    if (t.isNotEmpty && !_topics.contains(t)) {
-      setState(() => _topics.add(t));
-      _newTopicController.clear();
-    }
+    if (t.isEmpty) return;
+    _toggleTopic(t);
+    _newTopicController.clear();
   }
 
   Future<void> _save() async {
@@ -248,25 +281,68 @@ class _DetailScreenState extends State<DetailScreen> {
           ),
           const SizedBox(height: 20),
 
-          // Topics
+          // Topics — đã chọn + gợi ý từ kho
           const _SectionLabel('Chủ đề'),
           const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: _topics
-                .map((t) => InputChip(
-                      label: Text(t),
-                      onDeleted: () => setState(() => _topics.remove(t)),
-                      backgroundColor:
-                          AppColors.primary.withValues(alpha: 0.10),
-                      deleteIconColor: AppColors.primary,
-                      labelStyle: const TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600),
-                    ))
-                .toList(),
-          ),
+
+          // Đã chọn (xanh, có nút xóa)
+          if (_topics.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _topics
+                  .map((t) => InputChip(
+                        label: Text(t),
+                        onDeleted: () => setState(() => _topics.remove(t)),
+                        backgroundColor:
+                            AppColors.primary.withValues(alpha: 0.10),
+                        deleteIconColor: AppColors.primary,
+                        labelStyle: const TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600),
+                      ))
+                  .toList(),
+            ),
+
+          // Gợi ý từ kho (chưa chọn) — tap để chọn, tránh tạo trùng
+          if (_existingTopics
+              .any((t) => !_topics.any((s) => s.toLowerCase() == t.toLowerCase())))
+            ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(Icons.lightbulb_outline_rounded,
+                      size: 14, color: AppColors.textSecondary),
+                  const SizedBox(width: 4),
+                  const Text('Có sẵn trong kho — ưu tiên dùng lại',
+                      style: TextStyle(
+                          fontSize: 11, color: AppColors.textSecondary)),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: _existingTopics
+                    .where((t) => !_topics
+                        .any((s) => s.toLowerCase() == t.toLowerCase()))
+                    .map((t) => ActionChip(
+                          label: Text(t),
+                          onPressed: () => _toggleTopic(t),
+                          backgroundColor:
+                              AppColors.background.withValues(alpha: 0.7),
+                          side: BorderSide(
+                              color: AppColors.primary.withValues(alpha: 0.2)),
+                          labelStyle: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w500),
+                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                        ))
+                    .toList(),
+              ),
+            ],
+
           const SizedBox(height: 10),
           Row(
             children: [
@@ -274,7 +350,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 child: TextField(
                   controller: _newTopicController,
                   decoration: InputDecoration(
-                    hintText: 'Thêm chủ đề...',
+                    hintText: 'Thêm chủ đề mới...',
                     isDense: true,
                     filled: true,
                     fillColor: Colors.white,
@@ -298,7 +374,9 @@ class _DetailScreenState extends State<DetailScreen> {
           const SizedBox(height: 24),
 
           // Meanings
-          const _SectionLabel('Nghĩa'),
+          _SectionLabel(item.meanings.length > 1
+              ? 'Nghĩa (${item.meanings.length})'
+              : 'Nghĩa'),
           const SizedBox(height: 10),
           ...item.meanings.map((m) => Container(
                 margin: const EdgeInsets.only(bottom: 12),
